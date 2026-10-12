@@ -32,5 +32,11 @@ clean-targets:         # directories to be removed by `dbt clean`
 models:
   road_construction_autonomy:
     # Config indicated by + and applies to all files under models/example/
-    example:
-      +materialized: view
+    staging:
+      +enabled: true
+      +materialized: table
+      +schema: stg_road_construction
+    warehouse:
+      +enabled: true
+      +materialized: table
+      +schema: dwh_road_construction

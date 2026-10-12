@@ -1,0 +1,23 @@
+version: 2
+
+models:
+  - name: fact_construction
+    description: "the table is sourced from the us_constructions table in the road_construction_and_autonomy schema, 
+                  and it contains information about road construction projects, including project ID, location, 
+                  start and end dates, and status. It include all columns from the source. 
+                  name convention for the columns to make it easy to understand. And h"
+    columns:
+      - name: construction_id
+        description: "The primary key for this table"
+        data_tests:
+          - unique
+          - not_null
+  - name: dim_potential_self_driving_routes
+    description: "the table is sourced from the potential_self_driving_routes table in the road_construction_and_autonomy schema, 
+                  and it contains information about potential self-driving routes, including path name, path with a series lat and long, and distance."  
+    columns:
+      - name: path_name
+        description: "The primary key for this table"
+        data_tests:
+          - unique
+          - not_null
