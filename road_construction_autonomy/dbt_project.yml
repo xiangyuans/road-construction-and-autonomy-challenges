@@ -36,7 +36,82 @@ models:
       +enabled: true
       +materialized: table
       +schema: stg_road_construction
+    intermediate:
+      +enabled: true
+      +materialized: table
+      +schema: int_road_construction
     warehouse:
       +enabled: true
       +materialized: table
       +schema: dwh_road_construction
+
+seeds:
+  road_construction_autonomy:
+    weather_condition_mapping:
+      +column_types:
+        weather_condition: string
+        precip_type: string
+        precip_intensity: string
+        is_windy: boolean
+        is_blowing: boolean
+        is_freezing: boolean
+        is_precipitating: boolean
+    weather_impact_hazard_lookup:
+      +column_types:
+        hazard: string
+        rule: string
+        precip_intensity: string
+        visibility_miles: float64
+        hazard_value: float64
+    weather_cohort_init_centroids:
+      +column_types:
+        construction_id: string
+        notebook_cluster: int64
+        cohort_label: string
+
+vars:
+  # --- weather cohort work: data cleaning and imputation
+  weather_precip_invalid_threshold_in: 5      # precipitation_inches >= this is a sensor error -> null + precip_invalid
+  weather_precip_cap_in: 1.56                 # p99.9 of valid nonzero precipitation; precipitation_inches_capped clips here
+  weather_imputation_min_match_count: 3       # an imputation level is used only with at least this many measured neighbors
+  # --- weather cohort work: features
+  weather_freezing_threshold_f: 34            # temperature at or below this counts toward freezing_wet
+  weather_precip_light_max_in: 0.1            # < 0.1 in -> light
+  weather_precip_heavy_min_in: 0.3            # > 0.3 in -> heavy; between -> moderate
+  weather_night_start_hour: 19                # is_night: local hour >= 19 or < 6 (hour of weather_timestamp)
+  weather_night_end_hour: 6
+  # --- weather cohort work: impossible values (set to null before imputation, flagged <field>_invalid)
+  weather_wind_invalid_max_mph: 100           # wind_speed_mph > 100 -> invalid
+  weather_temperature_invalid_min_f: -50      # temperature < -50F or > 130F -> invalid
+  weather_temperature_invalid_max_f: 130
+  weather_visibility_invalid_min_mi: 0        # visibility < 0 or > 100 mi -> invalid
+  weather_visibility_invalid_max_mi: 100
+  weather_visibility_zero_valid_precip_types: ['fog', 'snow', 'ice_freezing']  # visibility = 0 is kept only for these
+                                              # (measured) condition types, heavy intensity or precipitation > heavy threshold
+  # --- weather cohort work: plausible extremes clipped in *_clipped columns (clustering and scoring)
+  weather_visibility_clip_min_mi: 0
+  weather_visibility_clip_max_mi: 10          # 10 mi is the reporting maximum
+  weather_wind_clip_min_mph: 0
+  weather_wind_clip_max_mph: 50
+  weather_temperature_clip_min_f: -30
+  weather_temperature_clip_max_f: 120
+  # --- weather cohort work: cohort assignment
+  weather_cohort_ambiguity_threshold: 0.8     # ambiguous_cohort when nearest / second-nearest centroid distance > this
+  weather_cohort_k: 9                         # chosen in notebooks/weather_cohort_exploration.ipynb (section 4)
+  weather_cohort_random_state: 42             # sample selection hash seed
+  weather_cohort_sample_target_rows: 400000   # stratified training sample (month-of-year x precip_type)
+  weather_cohort_sample_min_per_stratum: 2000
+  weather_cohort_label_share: 0.5             # a cohort is named after a type / marker when >= this share of its rows have it
+  weather_cohort_dense_fog_max_mi: 1          # label marker: fog with visibility below this
+  weather_cohort_high_wind_mph: 25            # label marker: wind at or above this
+  refit_cohort_model: false                   # true -> CREATE OR REPLACE the BigQuery ML k-means model on the next run
+  # --- weather impact score (lookup tables live in seeds/weather_impact_hazard_lookup.csv)
+  weather_impact_second_hazard_bonus: 0.25    # base = worst hazard + this x second-worst hazard
+  weather_impact_darkness_add: 1.0            # + when is_night
+  weather_impact_wind_start_mph: 25           # wind add: 0 below this ...
+  weather_impact_wind_full_mph: 50            # ... rising linearly to weather_impact_wind_max_add at this speed
+  weather_impact_wind_max_add: 1.5
+  weather_impact_blowing_add: 1.0             # + when is_blowing
+  weather_impact_level_moderate_min: 3        # Low < 3 <= Moderate < 6 <= High < 8 <= Severe
+  weather_impact_level_high_min: 6
+  weather_impact_level_severe_min: 8

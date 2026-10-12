@@ -1,0 +1,69 @@
+version: 2
+
+seeds:
+  - name: weather_condition_mapping
+    description: >
+      One row per normalized weather_condition value (trimmed, lowercased, repeated spaces collapsed), mapped to
+      precip_type, precip_intensity (blank when the text doesn't state it) and condition flags.
+    columns:
+      - name: weather_condition
+        description: "Normalized condition text."
+        data_tests:
+          - unique
+          - not_null
+      - name: precip_type
+        description: "rain, snow, ice_freezing, fog, haze_smoke_dust, thunderstorm, clear_cloudy or unknown."
+        data_tests:
+          - accepted_values:
+              values: ['rain', 'snow', 'ice_freezing', 'fog', 'haze_smoke_dust', 'thunderstorm', 'clear_cloudy', 'unknown']
+      - name: precip_intensity
+        description: "none, light, moderate, heavy, or null when the text doesn't state it."
+      - name: is_windy
+        description: "The text mentions wind."
+      - name: is_blowing
+        description: "Blowing or drifting snow, dust or sand."
+      - name: is_freezing
+        description: "Freezing precipitation or freezing fog."
+      - name: is_precipitating
+        description: "Something is falling at the station."
+
+  - name: weather_impact_hazard_lookup
+    description: >
+      Lookup tables for the self-driving impact score (macros/weather_impact.sql), calibrated against anchor
+      scenarios in notebooks/weather_cohort_exploration.ipynb. hazard = visibility: points (visibility_miles,
+      hazard_value) interpolated linearly, constant beyond the first and last point. hazard = precip_sensor:
+      rule = precip_type, by precip_intensity. hazard = traction: rule = freezing_precip, snow (by intensity),
+      freezing_wet, heavy_rain, wet_road, dry. Every table must stay monotonic (tested).
+    columns:
+      - name: hazard
+        description: "visibility, precip_sensor or traction."
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['visibility', 'precip_sensor', 'traction']
+      - name: rule
+        description: "point (visibility), precip_type (precip_sensor) or traction rule name."
+      - name: precip_intensity
+        description: "light, moderate or heavy where the value depends on intensity."
+      - name: visibility_miles
+        description: "Visibility point (visibility hazard only)."
+      - name: hazard_value
+        description: "Hazard on the 0-10 scale."
+        data_tests:
+          - not_null
+
+  - name: weather_cohort_init_centroids
+    description: >
+      Written by the exploration notebook: for each of its k clusters, the training row nearest the centroid.
+      BigQuery ML k-means starts from these rows (kmeans_init_method = CUSTOM) so its clusters match the
+      notebook's.
+    columns:
+      - name: construction_id
+        description: "A row of int_weather_cohort_training_sample."
+        data_tests:
+          - unique
+          - not_null
+      - name: notebook_cluster
+        description: "Notebook cluster id (0..k-1)."
+      - name: cohort_label
+        description: "Notebook cohort label for that cluster."

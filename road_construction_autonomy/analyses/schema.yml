@@ -1,0 +1,8 @@
+version: 2
+
+analyses:
+  - name: weather_impact_score_breakdown
+    description: >
+      Spot-check query: every component of self_driving_impact_score (three hazards, driver, base, additions)
+      for the construction_ids in var breakdown_construction_ids, next to the stored score. Uses the same macro
+      as fact_construction_weather_impact.

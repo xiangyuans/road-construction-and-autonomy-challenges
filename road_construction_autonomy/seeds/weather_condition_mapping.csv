@@ -1,0 +1,112 @@
+weather_condition,precip_type,precip_intensity,is_windy,is_blowing,is_freezing,is_precipitating
+clear,clear_cloudy,none,false,false,false,false
+cloudy,clear_cloudy,none,false,false,false,false
+cloudy / windy,clear_cloudy,none,true,false,false,false
+fair,clear_cloudy,none,false,false,false,false
+fair / windy,clear_cloudy,none,true,false,false,false
+mostly cloudy,clear_cloudy,none,false,false,false,false
+mostly cloudy / windy,clear_cloudy,none,true,false,false,false
+overcast,clear_cloudy,none,false,false,false,false
+partly cloudy,clear_cloudy,none,false,false,false,false
+partly cloudy / windy,clear_cloudy,none,true,false,false,false
+scattered clouds,clear_cloudy,none,false,false,false,false
+squalls,clear_cloudy,none,true,false,false,false
+squalls / windy,clear_cloudy,none,true,false,false,false
+fog,fog,none,false,false,false,false
+fog / windy,fog,none,true,false,false,false
+light freezing fog,fog,none,false,false,true,false
+mist,fog,none,false,false,false,false
+mist / windy,fog,none,true,false,false,false
+partial fog,fog,none,false,false,false,false
+patches of fog,fog,none,false,false,false,false
+patches of fog / windy,fog,none,true,false,false,false
+shallow fog,fog,none,false,false,false,false
+blowing dust,haze_smoke_dust,none,false,true,false,false
+blowing dust / windy,haze_smoke_dust,none,true,true,false,false
+blowing sand,haze_smoke_dust,none,false,true,false,false
+haze,haze_smoke_dust,none,false,false,false,false
+haze / windy,haze_smoke_dust,none,true,false,false,false
+sand,haze_smoke_dust,none,false,false,false,false
+sand / dust whirls nearby,haze_smoke_dust,none,false,true,false,false
+sand / dust whirlwinds,haze_smoke_dust,none,false,true,false,false
+smoke,haze_smoke_dust,none,false,false,false,false
+smoke / windy,haze_smoke_dust,none,true,false,false,false
+widespread dust,haze_smoke_dust,none,false,false,false,false
+widespread dust / windy,haze_smoke_dust,none,true,false,false,false
+freezing drizzle,ice_freezing,light,false,false,true,true
+freezing rain,ice_freezing,,false,false,true,true
+freezing rain / windy,ice_freezing,,true,false,true,true
+hail,ice_freezing,,false,false,false,true
+heavy freezing drizzle,ice_freezing,heavy,false,false,true,true
+ice pellets,ice_freezing,,false,false,true,true
+light freezing drizzle,ice_freezing,light,false,false,true,true
+light freezing rain,ice_freezing,light,false,false,true,true
+light freezing rain / windy,ice_freezing,light,true,false,true,true
+light ice pellets,ice_freezing,light,false,false,true,true
+light sleet,ice_freezing,light,false,false,true,true
+light sleet / windy,ice_freezing,light,true,false,true,true
+light snow and sleet,ice_freezing,light,false,false,true,true
+light snow and sleet / windy,ice_freezing,light,true,false,true,true
+sleet,ice_freezing,,false,false,true,true
+sleet / windy,ice_freezing,,true,false,true,true
+small hail,ice_freezing,,false,false,false,true
+snow and sleet,ice_freezing,,false,false,true,true
+snow and sleet / windy,ice_freezing,,true,false,true,true
+wintry mix,ice_freezing,,false,false,true,true
+wintry mix / windy,ice_freezing,,true,false,true,true
+drizzle,rain,light,false,false,false,true
+drizzle / windy,rain,light,true,false,false,true
+drizzle and fog,rain,light,false,false,false,true
+heavy drizzle,rain,heavy,false,false,false,true
+heavy drizzle / windy,rain,heavy,true,false,false,true
+heavy rain,rain,heavy,false,false,false,true
+heavy rain / windy,rain,heavy,true,false,false,true
+heavy rain shower,rain,heavy,false,false,false,true
+light drizzle,rain,light,false,false,false,true
+light drizzle / windy,rain,light,true,false,false,true
+light rain,rain,light,false,false,false,true
+light rain / windy,rain,light,true,false,false,true
+light rain shower,rain,light,false,false,false,true
+light rain shower / windy,rain,light,true,false,false,true
+light rain showers,rain,light,false,false,false,true
+rain,rain,,false,false,false,true
+rain / windy,rain,,true,false,false,true
+rain shower,rain,,false,false,false,true
+rain shower / windy,rain,,true,false,false,true
+rain showers,rain,,false,false,false,true
+showers in the vicinity,rain,none,false,false,false,false
+blowing snow,snow,none,false,true,false,false
+blowing snow / windy,snow,none,true,true,false,false
+drifting snow / windy,snow,none,true,true,false,false
+heavy blowing snow,snow,none,false,true,false,false
+heavy snow,snow,heavy,false,false,false,true
+heavy snow / windy,snow,heavy,true,false,false,true
+ice crystals,snow,,false,false,false,true
+light snow,snow,light,false,false,false,true
+light snow / windy,snow,light,true,false,false,true
+light snow grains,snow,light,false,false,false,true
+light snow shower,snow,light,false,false,false,true
+light snow shower / windy,snow,light,true,false,false,true
+light snow showers,snow,light,false,false,false,true
+low drifting snow,snow,none,false,true,false,false
+snow,snow,,false,false,false,true
+snow / windy,snow,,true,false,false,true
+funnel cloud,thunderstorm,none,false,false,false,false
+heavy t-storm,thunderstorm,heavy,false,false,false,true
+heavy t-storm / windy,thunderstorm,heavy,true,false,false,true
+heavy thunderstorms and rain,thunderstorm,heavy,false,false,false,true
+heavy thunderstorms with hail,thunderstorm,heavy,false,false,false,true
+light rain with thunder,thunderstorm,light,false,false,false,true
+light snow with thunder,thunderstorm,light,false,false,false,true
+light thunderstorms and rain,thunderstorm,light,false,false,false,true
+light thunderstorms and snow,thunderstorm,light,false,false,false,true
+t-storm,thunderstorm,,false,false,false,true
+t-storm / windy,thunderstorm,,true,false,false,true
+thunder,thunderstorm,none,false,false,false,false
+thunder / windy,thunderstorm,none,true,false,false,false
+thunder / wintry mix,thunderstorm,,false,false,true,true
+thunder in the vicinity,thunderstorm,none,false,false,false,false
+thunderstorm,thunderstorm,,false,false,false,true
+thunderstorms and rain,thunderstorm,,false,false,false,true
+tornado,thunderstorm,none,false,false,false,false
+n/a precipitation,unknown,,false,false,false,true

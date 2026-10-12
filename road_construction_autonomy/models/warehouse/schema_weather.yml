@@ -1,0 +1,113 @@
+version: 2
+
+models:
+  - name: fact_construction_weather_impact
+    description: >
+      Weather-only self-driving impact score per construction event; the first step of a larger risk
+      analysis and joinable to other tables on construction_id. Severity is intentionally excluded (it
+      describes the construction, not the weather).
+
+      Score ("worst hazard wins", see macros/weather_impact.sql and seeds/weather_impact_hazard_lookup.csv):
+      visibility hazard (piecewise-linear in visibility), precipitation sensor hazard (precip_type x
+      intensity: rain and snow block cameras and lidar even with good reported visibility) and traction hazard
+      (freezing precipitation at or below 34F, snow, black ice risk, hydroplaning, wet road), each 0-10.
+      base = worst + 0.25 x second-worst; plus darkness (+1), wind (+0 below 25 mph to +1.5 at 50 mph) and
+      blowing snow/dust (+1); clipped to 0-10 and rounded to one decimal. Lookup values were calibrated against
+      anchor scenarios (e.g. clear day 0, light rain 3, heavy rain at night 7, dense fog 8, heavy snow 9).
+
+      Incremental (merge on construction_id): each run recomputes scores from the upstream tables and merges
+      only new rows or rows whose score, level, cohort_label or impute_source changed; --full-refresh rescores
+      everything. Rows removed upstream are not deleted by an incremental run.
+    columns:
+      - name: construction_id
+        description: "Primary key; one row per construction event in fact_construction."
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              to: ref('fact_construction')
+              field: construction_id
+      - name: self_driving_impact_score
+        description: "0-10, one decimal: how much the weather at the time would affect a self-driving vehicle."
+        data_tests:
+          - not_null
+      - name: self_driving_impact_level
+        description: "Low (< 3), Moderate (3 to < 6), High (6 to < 8), Severe (>= 8); cutoffs are vars weather_impact_level_*_min."
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['Low', 'Moderate', 'High', 'Severe']
+      - name: cohort_label
+        description: >
+          Weather cohort from int_construction_weather_cohorts (BigQuery ML k-means, rule-based name), or
+          Unknown when precip_type is unknown: the model was trained without those rows, so their nearest
+          cohort is not used as a label (their score is still computed from the measured/imputed weather).
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['Clear/Dry Day', 'Clear/Dry Night', 'Rain', 'Heavy Rain', 'Fog/Low Visibility', 'Dense Fog',
+                       'Haze/Smoke/Dust', 'Thunderstorm', 'Heavy Thunderstorm', 'Snow', 'Heavy Snow',
+                       'Freezing/Icy', 'High Wind/Blowing', 'Heavy Precipitation', 'Unknown']
+      - name: impute_source
+        description: >
+          Lowest-confidence imputation used for the row's weather: none (all measured), zero_fill (only
+          rule-based zeros: precipitation under a non-precipitating condition, wind under a calm direction),
+          level_1 same postal code +-1 hour, level_2 same (state, city) +-1 hour, level_3 same (state, city)
+          and date, level_4 same (state, city) and calendar month, level_5 same weather condition and month,
+          level_6 overall median. See int_construction_weather_imputed.
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['none', 'zero_fill', 'level_1', 'level_2', 'level_3', 'level_4', 'level_5', 'level_6']
+
+  - name: dim_weather_cohort
+    description: >
+      One row per cohort_label in fact_construction_weather_impact: the weather cohorts plus Unknown
+      (precip_type = unknown). Size, average weather profile and mean self-driving impact score;
+      impact_rank 1 = highest mean score. Row counts add up to all construction events.
+    columns:
+      - name: impact_rank
+        description: "Rank by mean_self_driving_impact_score, highest first."
+      - name: cohort_id
+        description: "BigQuery ML centroid id; null for Unknown; can change on a refit."
+        data_tests:
+          - unique
+      - name: cohort_label
+        description: "Cohort label as in fact_construction_weather_impact (rule-based name, or Unknown)."
+        data_tests:
+          - unique
+          - not_null
+      - name: row_count
+        description: "Construction events in the cohort."
+      - name: population_share
+        description: "row_count / all construction events."
+      - name: avg_precipitation_inches_capped
+        description: "Mean capped precipitation (inches)."
+      - name: avg_visibility_miles_clipped
+        description: "Mean clipped visibility (miles)."
+      - name: avg_wind_speed_mph_clipped
+        description: "Mean clipped wind speed (mph)."
+      - name: avg_humidity_percent
+        description: "Mean relative humidity (%)."
+      - name: avg_temperature_fahrenheit_clipped
+        description: "Mean clipped temperature (F)."
+      - name: share_wet_road
+        description: "Share of rows with wet_road."
+      - name: share_freezing_wet
+        description: "Share of rows with freezing_wet."
+      - name: share_blowing
+        description: "Share of rows with blowing snow, dust or sand."
+      - name: share_night
+        description: "Share of rows at night."
+      - name: share_heavy_precip
+        description: "Share of rows with heavy precipitation intensity."
+      - name: share_unknown_precip_type
+        description: "Share of rows whose precip_type is unknown (1 for the Unknown row, 0 otherwise)."
+      - name: share_ambiguous
+        description: "Share of rows flagged ambiguous_cohort."
+      - name: dominant_precip_type
+        description: "Most common precip_type in the cohort."
+      - name: mean_self_driving_impact_score
+        description: "Mean self_driving_impact_score."
+      - name: share_high_or_severe
+        description: "Share of rows at High or Severe impact level."

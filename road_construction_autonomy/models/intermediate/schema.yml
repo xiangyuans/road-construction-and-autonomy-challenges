@@ -1,0 +1,335 @@
+version: 2
+
+models:
+  - name: int_construction_weather_imputed
+    description: >
+      One row per construction event from fact_construction (no rows dropped), with missing
+      weather fields filled from measured neighbors. First step of the weather cohort / self-driving
+      impact work. Severity is intentionally excluded: it describes the construction, not the weather.
+
+      Imputation levels (first level with at least var weather_imputation_min_match_count measured
+      neighbor values wins; ±1 hour levels include the row's hour bucket and both neighboring buckets):
+      level_1 same postal_code (5-digit) within ±1 hour; level_2 same (state, city) within ±1 hour;
+      level_3 same (state, city), same date; level_4 same (state, city), same calendar year-month;
+      level_5 same (imputed) weather_condition, same calendar year-month (numeric fields only);
+      level_6 overall median (numeric fields only).
+      Numeric fields use exact medians, weather_condition uses the mode. Only measured values are used
+      as neighbors; imputed values are never reused. Measured values, including precipitation 0.0,
+      are never overwritten.
+    columns:
+      - name: construction_id
+        description: "Primary key; one row per construction event in fact_construction."
+        data_tests:
+          - unique
+          - not_null
+      - name: postal_code
+        description: "5-digit postal code from stg_construction; location key for imputation level 1."
+      - name: state
+        description: "State; combined with city for imputation levels 2-4 (city names repeat across states)."
+      - name: city
+        description: "City; always matched together with state."
+      - name: weather_timestamp
+        description: "weather_observation_time, falling back to start_time_local when missing. Drives the hour, date and month buckets."
+      - name: weather_timestamp_source
+        description: "Which column weather_timestamp came from: weather_observation_time or start_time_local."
+        data_tests:
+          - accepted_values:
+              values: ['weather_observation_time', 'start_time_local']
+      - name: weather_condition
+        description: >
+          Normalized condition text (trimmed, lowercased, repeated spaces collapsed; same as the mapping
+          seed), imputed with levels 1-4 only. It stops at level 4 on purpose: level 5 would be circular
+          (it groups by the condition that is missing) and level 6 (the overall mode) would label every
+          unmatched row as clear. Rows still null after level 4 get precip_type from the numeric
+          fallback in int_construction_weather_features.
+      - name: temperature_fahrenheit
+        description: "Air temperature (F), imputed with levels 1-6. Impossible readings (temperature_invalid) are nulled first and imputed like any other null."
+        data_tests:
+          - not_null
+      - name: humidity_percent
+        description: "Relative humidity (%), imputed with levels 1-6."
+        data_tests:
+          - not_null
+      - name: visibility_miles
+        description: "Visibility (miles), imputed with levels 1-6. Impossible readings (visibility_invalid) are nulled first."
+        data_tests:
+          - not_null
+      - name: wind_speed_mph
+        description: >
+          Wind speed (mph). When missing and wind_direction reports calm (case-insensitive; the older
+          weather feed records calm as 'Calm' with a null speed), set to 0 (zero_fill); otherwise imputed
+          with levels 1-6. Impossible readings (wind_speed_invalid) are nulled first.
+        data_tests:
+          - not_null
+      - name: temperature_invalid
+        description: "True when the raw temperature was below var weather_temperature_invalid_min_f (-50F) or above var weather_temperature_invalid_max_f (130F): a sensor error, set to null before imputation."
+        data_tests:
+          - not_null
+      - name: visibility_invalid
+        description: >
+          True when the raw visibility was impossible and set to null before imputation: below var
+          weather_visibility_invalid_min_mi (0), above var weather_visibility_invalid_max_mi (100 mi), or exactly 0
+          unless the measured condition is one of var weather_visibility_zero_valid_precip_types (fog, snow,
+          ice_freezing), its intensity is heavy, or the measured precipitation is above var weather_precip_heavy_min_in.
+        data_tests:
+          - not_null
+      - name: wind_speed_invalid
+        description: "True when the raw wind speed was above var weather_wind_invalid_max_mph (100 mph): a sensor error, set to null before imputation."
+        data_tests:
+          - not_null
+      - name: precipitation_inches_raw
+        description: "precipitation_inches exactly as in fact_construction, including invalid values and nulls."
+      - name: precip_invalid
+        description: >
+          True when the raw precipitation is at or above var weather_precip_invalid_threshold_in (5 in).
+          These readings are sensor errors (mostly a few New York City area stations reporting ~9.99 in
+          under clear skies); they are set to null before imputation and then filled like any other null.
+        data_tests:
+          - not_null
+      - name: precipitation_inches
+        description: >
+          Cleaned and imputed precipitation (inches). Null when the row's (imputed) condition is
+          non-precipitating per the mapping seed -> set to 0 (zero_fill) instead of imputed from
+          neighbors; otherwise imputed with levels 1-6.
+      - name: precipitation_inches_capped
+        description: "precipitation_inches clipped at var weather_precip_cap_in (1.56 in, p99.9 of valid nonzero values). Use this for clustering and scoring."
+      - name: weather_condition_impute_level
+        description: "How weather_condition was obtained: measured, level_1 to level_4, or null if still missing."
+        data_tests:
+          - accepted_values:
+              values: ['measured', 'level_1', 'level_2', 'level_3', 'level_4']
+      - name: temperature_fahrenheit_impute_level
+        description: "How temperature_fahrenheit was obtained: measured or level_1 to level_6."
+        data_tests:
+          - accepted_values:
+              values: ['measured', 'level_1', 'level_2', 'level_3', 'level_4', 'level_5', 'level_6']
+      - name: humidity_percent_impute_level
+        description: "How humidity_percent was obtained: measured or level_1 to level_6."
+        data_tests:
+          - accepted_values:
+              values: ['measured', 'level_1', 'level_2', 'level_3', 'level_4', 'level_5', 'level_6']
+      - name: visibility_miles_impute_level
+        description: "How visibility_miles was obtained: measured or level_1 to level_6."
+        data_tests:
+          - accepted_values:
+              values: ['measured', 'level_1', 'level_2', 'level_3', 'level_4', 'level_5', 'level_6']
+      - name: wind_speed_mph_impute_level
+        description: "How wind_speed_mph was obtained: measured, zero_fill (calm wind_direction), or level_1 to level_6."
+        data_tests:
+          - accepted_values:
+              values: ['measured', 'zero_fill', 'level_1', 'level_2', 'level_3', 'level_4', 'level_5', 'level_6']
+      - name: precipitation_inches_impute_level
+        description: "How precipitation_inches was obtained: measured, zero_fill (non-precipitating condition), or level_1 to level_6."
+        data_tests:
+          - accepted_values:
+              values: ['measured', 'zero_fill', 'level_1', 'level_2', 'level_3', 'level_4', 'level_5', 'level_6']
+      - name: impute_source
+        description: >
+          Lowest-confidence fill used anywhere in the row: none (all fields measured), zero_fill
+          (only rule-based zeros: precipitation from a non-precipitating condition and/or wind from a
+          calm wind_direction), or level_1 to level_6
+          (the highest level used by any field; see the model description).
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['none', 'zero_fill', 'level_1', 'level_2', 'level_3', 'level_4', 'level_5', 'level_6']
+      - name: imputed_fields
+        description: "Number of weather fields filled in this row (0-6), counting zero-filled precipitation and wind."
+        data_tests:
+          - not_null
+
+  - name: int_construction_weather_features
+    description: >
+      One row per construction event: imputed weather plus derived precipitation type, intensity and
+      road-condition flags. Joins seeds/weather_condition_mapping on the normalized weather_condition.
+      The exploration notebook (notebooks/weather_cohort_exploration.ipynb) samples from this model, so
+      its features match production exactly. Severity is intentionally excluded (not weather).
+    columns:
+      - name: construction_id
+        description: "Primary key; one row per construction event in fact_construction."
+        data_tests:
+          - unique
+          - not_null
+      - name: weather_timestamp
+        description: "weather_observation_time, falling back to start_time_local."
+      - name: weather_hour_of_day
+        description: "Hour (0-23) of weather_timestamp; drives is_night."
+      - name: weather_condition
+        description: "Normalized, imputed condition text (null if still missing after imputation level 4)."
+      - name: temperature_fahrenheit
+        description: "Imputed air temperature (F)."
+      - name: humidity_percent
+        description: "Imputed relative humidity (%)."
+      - name: visibility_miles
+        description: "Imputed visibility (miles)."
+      - name: wind_speed_mph
+        description: "Imputed wind speed (mph)."
+      - name: precipitation_inches
+        description: "Cleaned, imputed precipitation (inches); see int_construction_weather_imputed."
+      - name: temperature_fahrenheit_clipped
+        description: "temperature_fahrenheit clipped to vars weather_temperature_clip_min_f / _max_f (-30F to 120F); used for clustering and scoring."
+        data_tests:
+          - not_null
+      - name: visibility_miles_clipped
+        description: "visibility_miles clipped to vars weather_visibility_clip_min_mi / _max_mi (0 to 10 mi; 10 mi is the reporting maximum); used for clustering and scoring."
+        data_tests:
+          - not_null
+      - name: wind_speed_mph_clipped
+        description: "wind_speed_mph clipped to vars weather_wind_clip_min_mph / _max_mph (0 to 50 mph); used for clustering and scoring."
+        data_tests:
+          - not_null
+      - name: precipitation_inches_capped
+        description: "precipitation_inches clipped at var weather_precip_cap_in; used for intensity, clustering and scoring."
+      - name: precip_invalid
+        description: "True when the raw precipitation reading was at or above the invalid threshold and was replaced."
+      - name: temperature_invalid
+        description: "True when the raw temperature was impossible and was replaced by imputation."
+      - name: visibility_invalid
+        description: "True when the raw visibility was impossible and was replaced by imputation."
+      - name: wind_speed_invalid
+        description: "True when the raw wind speed was impossible and was replaced by imputation."
+      - name: precip_type
+        description: >
+          From the mapping seed via weather_condition. Numeric fallback when the condition is still null
+          or maps to unknown while precipitating ("n/a precipitation"): precipitation > 0 and
+          temperature <= 32F -> snow, > 32F -> rain, otherwise unknown.
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['rain', 'snow', 'ice_freezing', 'fog', 'haze_smoke_dust', 'thunderstorm', 'clear_cloudy', 'unknown']
+      - name: precip_type_source
+        description: "condition_text (from the seed) or inferred_from_numeric (fallback above)."
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['condition_text', 'inferred_from_numeric']
+      - name: precip_intensity
+        description: >
+          The seed's intensity when the text states it (or says nothing is falling); otherwise from
+          precipitation_inches_capped: 0 -> none, < var weather_precip_light_max_in -> light,
+          up to var weather_precip_heavy_min_in -> moderate, above -> heavy. When the text says it is
+          precipitating but gives no intensity, it is never none (minimum light).
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['none', 'light', 'moderate', 'heavy']
+      - name: is_windy
+        description: "Seed flag: the condition text mentions wind. False when the condition is null."
+      - name: is_blowing
+        description: "Seed flag: blowing or drifting snow, dust or sand. False when the condition is null."
+      - name: is_freezing
+        description: "Seed flag: freezing precipitation or freezing fog (freezing rain/drizzle, sleet, ice pellets, wintry mix). False when the condition is null."
+      - name: is_precipitating
+        description: "Seed flag: the condition text says something is falling at the station. Null when the condition is null."
+      - name: precip_conflict
+        description: "True when the text says non-precipitating but precipitation_inches > 0. precip_type keeps the text's type."
+      - name: wet_road
+        description: "True when precipitation_inches > 0 after imputation, regardless of the condition text."
+      - name: freezing_wet
+        description: "True when is_freezing, or temperature is at or below var weather_freezing_threshold_f (34F) and the road is wet or precip_type is snow or ice_freezing."
+      - name: is_night
+        description: "True when the hour of weather_timestamp is >= var weather_night_start_hour or < var weather_night_end_hour."
+      - name: impute_source
+        description: "Lowest-confidence imputation used in the row (see int_construction_weather_imputed)."
+      - name: imputed_fields
+        description: "Number of weather fields filled in this row."
+
+  - name: int_weather_cohort_training_sample
+    description: >
+      Deterministic stratified sample (~474k rows) of int_construction_weather_features used to train the
+      BigQuery ML weather cohort model and read by the exploration notebook, so both see identical rows.
+      Strata are month-of-year x precip_type (unknown excluded); each stratum gets its proportional share of
+      var weather_cohort_sample_target_rows but at least var weather_cohort_sample_min_per_stratum rows (or all
+      of them), so rare conditions are kept. Rows are chosen by FARM_FINGERPRINT(construction_id:random_state).
+      Includes the 17 feat_ clustering columns (see macros/weather_cohorts.sql).
+    columns:
+      - name: construction_id
+        description: "Primary key."
+        data_tests:
+          - unique
+          - not_null
+      - name: weather_month_of_year
+        description: "Month (1-12) of weather_timestamp; stratification key."
+      - name: stratum_rows
+        description: "Rows in this row's stratum (month-of-year x precip_type) in the population."
+      - name: stratum_quota
+        description: "Rows sampled from the stratum."
+      - name: sample_weight
+        description: "stratum_rows / stratum_quota: how many population rows this sample row represents."
+      - name: is_init_centroid
+        description: "True for the k rows (from seeds/weather_cohort_init_centroids.csv) BigQuery ML k-means starts from (kmeans_init_method = CUSTOM)."
+        data_tests:
+          - not_null
+
+  - name: int_construction_weather_cohorts
+    description: >
+      Every construction event (including precip_type = unknown) assigned to its nearest weather cohort by
+      the saved BigQuery ML k-means model `weather_cohort_kmeans` (k = var weather_cohort_k, standardized
+      features, trained on int_weather_cohort_training_sample starting from the notebook's centroids). The
+      pre-hook retrains only when var refit_cohort_model is true (or when no model exists yet); otherwise the
+      saved model is reused. Cohort labels come from rules on each cluster's average profile over rows with a
+      known precip_type, the same rules as the notebook, so they don't depend on cluster ids. Severity is
+      intentionally excluded.
+    columns:
+      - name: construction_id
+        description: "Primary key."
+        data_tests:
+          - unique
+          - not_null
+      - name: cohort_id
+        description: "BigQuery ML centroid id (1..k). Ids can change on a refit; use cohort_label for meaning."
+        data_tests:
+          - not_null
+      - name: cohort_label
+        description: >
+          Rule-based cohort name. A cluster is named after a precipitation type when at least
+          var weather_cohort_label_share of its rows have it, in this order: Freezing/Icy, (Heavy) Snow,
+          (Heavy) Thunderstorm, (Heavy) Rain, Dense Fog / Fog/Low Visibility, High Wind/Blowing,
+          Haze/Smoke/Dust, Clear/Dry Night or Day; then Heavy Precipitation, Freezing/Icy, Mixed. A suffix
+          like " (2)" would mean two clusters got the same name (the accepted_values test flags that).
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['Clear/Dry Day', 'Clear/Dry Night', 'Rain', 'Heavy Rain', 'Fog/Low Visibility', 'Dense Fog',
+                       'Haze/Smoke/Dust', 'Thunderstorm', 'Heavy Thunderstorm', 'Snow', 'Heavy Snow',
+                       'Freezing/Icy', 'High Wind/Blowing', 'Heavy Precipitation']
+      - name: centroid_distance
+        description: "Distance (standardized feature space) to the assigned cohort's centroid."
+      - name: second_centroid_distance
+        description: "Distance to the second-nearest centroid."
+      - name: centroid_distance_ratio
+        description: "centroid_distance / second_centroid_distance (0-1); near 1 means the row sits between two cohorts."
+      - name: ambiguous_cohort
+        description: "True when centroid_distance_ratio > var weather_cohort_ambiguity_threshold (0.8)."
+        data_tests:
+          - not_null
+      - name: precip_type
+        description: "From int_construction_weather_features."
+      - name: precip_type_source
+        description: "From int_construction_weather_features."
+      - name: precip_intensity
+        description: "From int_construction_weather_features."
+      - name: precipitation_inches_capped
+        description: "From int_construction_weather_features."
+      - name: visibility_miles_clipped
+        description: "From int_construction_weather_features."
+      - name: wind_speed_mph_clipped
+        description: "From int_construction_weather_features."
+      - name: humidity_percent
+        description: "From int_construction_weather_features."
+      - name: temperature_fahrenheit_clipped
+        description: "From int_construction_weather_features."
+      - name: wet_road
+        description: "From int_construction_weather_features."
+      - name: freezing_wet
+        description: "From int_construction_weather_features."
+      - name: is_freezing
+        description: "From int_construction_weather_features."
+      - name: is_precipitating
+        description: "From int_construction_weather_features."
+      - name: is_blowing
+        description: "From int_construction_weather_features."
+      - name: is_night
+        description: "From int_construction_weather_features."
+      - name: impute_source
+        description: "From int_construction_weather_imputed."
