@@ -34,7 +34,8 @@ models:
         description: "Which column weather_timestamp came from: weather_observation_time or start_time_local."
         data_tests:
           - accepted_values:
-              values: ['weather_observation_time', 'start_time_local']
+              arguments:
+                values: ['weather_observation_time', 'start_time_local']
       - name: weather_condition
         description: >
           Normalized condition text (trimmed, lowercased, repeated spaces collapsed; same as the mapping
@@ -97,32 +98,38 @@ models:
         description: "How weather_condition was obtained: measured, level_1 to level_4, or null if still missing."
         data_tests:
           - accepted_values:
-              values: ['measured', 'level_1', 'level_2', 'level_3', 'level_4']
+              arguments:
+                values: ['measured', 'level_1', 'level_2', 'level_3', 'level_4']
       - name: temperature_fahrenheit_impute_level
         description: "How temperature_fahrenheit was obtained: measured or level_1 to level_6."
         data_tests:
           - accepted_values:
-              values: ['measured', 'level_1', 'level_2', 'level_3', 'level_4', 'level_5', 'level_6']
+              arguments:
+                values: ['measured', 'level_1', 'level_2', 'level_3', 'level_4', 'level_5', 'level_6']
       - name: humidity_percent_impute_level
         description: "How humidity_percent was obtained: measured or level_1 to level_6."
         data_tests:
           - accepted_values:
-              values: ['measured', 'level_1', 'level_2', 'level_3', 'level_4', 'level_5', 'level_6']
+              arguments:
+                values: ['measured', 'level_1', 'level_2', 'level_3', 'level_4', 'level_5', 'level_6']
       - name: visibility_miles_impute_level
         description: "How visibility_miles was obtained: measured or level_1 to level_6."
         data_tests:
           - accepted_values:
-              values: ['measured', 'level_1', 'level_2', 'level_3', 'level_4', 'level_5', 'level_6']
+              arguments:
+                values: ['measured', 'level_1', 'level_2', 'level_3', 'level_4', 'level_5', 'level_6']
       - name: wind_speed_mph_impute_level
         description: "How wind_speed_mph was obtained: measured, zero_fill (calm wind_direction), or level_1 to level_6."
         data_tests:
           - accepted_values:
-              values: ['measured', 'zero_fill', 'level_1', 'level_2', 'level_3', 'level_4', 'level_5', 'level_6']
+              arguments:
+                values: ['measured', 'zero_fill', 'level_1', 'level_2', 'level_3', 'level_4', 'level_5', 'level_6']
       - name: precipitation_inches_impute_level
         description: "How precipitation_inches was obtained: measured, zero_fill (non-precipitating condition), or level_1 to level_6."
         data_tests:
           - accepted_values:
-              values: ['measured', 'zero_fill', 'level_1', 'level_2', 'level_3', 'level_4', 'level_5', 'level_6']
+              arguments:
+                values: ['measured', 'zero_fill', 'level_1', 'level_2', 'level_3', 'level_4', 'level_5', 'level_6']
       - name: impute_source
         description: >
           Lowest-confidence fill used anywhere in the row: none (all fields measured), zero_fill
@@ -132,7 +139,8 @@ models:
         data_tests:
           - not_null
           - accepted_values:
-              values: ['none', 'zero_fill', 'level_1', 'level_2', 'level_3', 'level_4', 'level_5', 'level_6']
+              arguments:
+                values: ['none', 'zero_fill', 'level_1', 'level_2', 'level_3', 'level_4', 'level_5', 'level_6']
       - name: imputed_fields
         description: "Number of weather fields filled in this row (0-6), counting zero-filled precipitation and wind."
         data_tests:
@@ -196,13 +204,15 @@ models:
         data_tests:
           - not_null
           - accepted_values:
-              values: ['rain', 'snow', 'ice_freezing', 'fog', 'haze_smoke_dust', 'thunderstorm', 'clear_cloudy', 'unknown']
+              arguments:
+                values: ['rain', 'snow', 'ice_freezing', 'fog', 'haze_smoke_dust', 'thunderstorm', 'clear_cloudy', 'unknown']
       - name: precip_type_source
         description: "condition_text (from the seed) or inferred_from_numeric (fallback above)."
         data_tests:
           - not_null
           - accepted_values:
-              values: ['condition_text', 'inferred_from_numeric']
+              arguments:
+                values: ['condition_text', 'inferred_from_numeric']
       - name: precip_intensity
         description: >
           The seed's intensity when the text states it (or says nothing is falling); otherwise from
@@ -212,7 +222,8 @@ models:
         data_tests:
           - not_null
           - accepted_values:
-              values: ['none', 'light', 'moderate', 'heavy']
+              arguments:
+                values: ['none', 'light', 'moderate', 'heavy']
       - name: is_windy
         description: "Seed flag: the condition text mentions wind. False when the condition is null."
       - name: is_blowing
@@ -290,9 +301,10 @@ models:
         data_tests:
           - not_null
           - accepted_values:
-              values: ['Clear/Dry Day', 'Clear/Dry Night', 'Rain', 'Heavy Rain', 'Fog/Low Visibility', 'Dense Fog',
-                       'Haze/Smoke/Dust', 'Thunderstorm', 'Heavy Thunderstorm', 'Snow', 'Heavy Snow',
-                       'Freezing/Icy', 'High Wind/Blowing', 'Heavy Precipitation']
+              arguments:
+                values: ['Clear/Dry Day', 'Clear/Dry Night', 'Rain', 'Heavy Rain', 'Fog/Low Visibility', 'Dense Fog',
+                         'Haze/Smoke/Dust', 'Thunderstorm', 'Heavy Thunderstorm', 'Snow', 'Heavy Snow',
+                         'Freezing/Icy', 'High Wind/Blowing', 'Heavy Precipitation']
       - name: centroid_distance
         description: "Distance (standardized feature space) to the assigned cohort's centroid."
       - name: second_centroid_distance

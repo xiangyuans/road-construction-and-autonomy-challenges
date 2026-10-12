@@ -15,7 +15,8 @@ seeds:
         description: "rain, snow, ice_freezing, fog, haze_smoke_dust, thunderstorm, clear_cloudy or unknown."
         data_tests:
           - accepted_values:
-              values: ['rain', 'snow', 'ice_freezing', 'fog', 'haze_smoke_dust', 'thunderstorm', 'clear_cloudy', 'unknown']
+              arguments:
+                values: ['rain', 'snow', 'ice_freezing', 'fog', 'haze_smoke_dust', 'thunderstorm', 'clear_cloudy', 'unknown']
       - name: precip_intensity
         description: "none, light, moderate, heavy, or null when the text doesn't state it."
       - name: is_windy
@@ -40,7 +41,8 @@ seeds:
         data_tests:
           - not_null
           - accepted_values:
-              values: ['visibility', 'precip_sensor', 'traction']
+              arguments:
+                values: ['visibility', 'precip_sensor', 'traction']
       - name: rule
         description: "point (visibility), precip_type (precip_sensor) or traction rule name."
       - name: precip_intensity
