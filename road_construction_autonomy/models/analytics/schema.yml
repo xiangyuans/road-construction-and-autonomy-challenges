@@ -1,0 +1,53 @@
+version: 2
+
+models:
+  - name: construction_route_overlap
+    description: >
+      One row per construction and potential self-driving route it touches (a construction with no route gets one
+      row with overlap_type 'none'). A construction's area is its start-end line buffered by 10 m (~1 lane each
+      side), or a 10 m circle when it has no length or no end coordinates.
+    columns:
+      - name: construction_id
+        data_tests:
+          - not_null
+      - name: overlap_type
+        description: "none / full (route runs the whole length) / crossing (route cuts across) / partial"
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['none', 'full', 'crossing', 'partial']
+      - name: start_on_path
+        description: "Construction start point is within 10 m of the route"
+      - name: end_on_path
+        description: "Construction end point is within 10 m of the route"
+      - name: overlap_spot
+        description: "Middle of the overlapped section, on the route; null when overlap_type is 'none'"
+
+  - name: route_construction_summary
+    description: >
+      One row per potential self-driving route: construction on the route that started in 2017-2021.
+      A construction touching two routes counts on both; hours are each construction's full duration.
+      Weak matches are excluded: a construction counts only if it is fully on the route (overlap_type 'full')
+      or at least 50 m of it overlaps the route, so crossings and constructions that only start or end at the
+      route are left out.
+    columns:
+      - name: path_name
+        description: "The primary key for this table"
+        data_tests:
+          - unique
+          - not_null
+      - name: construction_count
+        description: "Constructions that touch the route"
+      - name: construction_hours
+        description: "Sum of end_time_local - start_time_local, in hours"
+      - name: high_severity_hours
+        description: >
+          Construction hours where severity is 3 or 4 (severity: impact on traffic, 1 = short delay to
+          4 = long delay)
+      - name: high_severe_impact_hours
+        description: "Construction hours where the weather self_driving_impact_level is High or Severe"
+      - name: path_geography
+        description: "Route line, from dim_potential_self_driving_routes"
+      - name: construction_spots
+        description: "MULTIPOINT of where each construction meets the route (overlap_spot), for maps"
