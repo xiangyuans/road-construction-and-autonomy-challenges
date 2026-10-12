@@ -44,6 +44,10 @@ models:
       +enabled: true
       +materialized: table
       +schema: dwh_road_construction
+    analytics:
+      +enabled: true
+      +materialized: table
+      +schema: obt_road_construction_and_antonomy
 
 seeds:
   road_construction_autonomy:
