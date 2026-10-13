@@ -1,0 +1,9 @@
+sources:
+  - name: road_construction
+    database: takehome-511200
+    schema: road_construction_and_autonomy
+    tables:
+      - name: us_constructions
+        description: "This table contains information about road construction projects, including construction ID, the location (start and end lat, long), severity of contruction."
+      - name: potential_self_driving_routes
+        description: "This table contains information about potential self-driving routes, including path name, path with a series lat and long , and distance."  

@@ -1,0 +1,30 @@
+# Weather cohort exploration notebook dependencies.
+# Installed into the repo-root .venv alongside dbt-bigquery; versions resolved
+# against that environment so they don't conflict with dbt.
+#   .venv/bin/pip install -r notebooks/requirements.txt
+
+# Notebook
+jupyter==1.1.1
+ipykernel==7.4.0
+nbstripout==0.9.1
+
+# Data
+pandas==3.0.6
+numpy==2.5.3
+pyarrow==26.0.0
+
+# Modeling / plotting
+scikit-learn==1.9.1
+matplotlib==3.11.2
+seaborn==0.13.2
+
+# Config
+python-dotenv==1.2.4
+
+# BigQuery connector with pandas + Storage Read API support
+google-cloud-bigquery[pandas,bqstorage]==3.46.1
+google-cloud-bigquery-storage==2.42.0
+db-dtypes==1.7.2
+
+# Reads the dbt profile as a config fallback (also a dbt dependency)
+pyyaml==6.0.3

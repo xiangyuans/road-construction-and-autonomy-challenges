@@ -1,0 +1,16 @@
+# Python / notebooks
+.venv/
+.ipynb_checkpoints/
+
+# Notebook credentials and cached data
+notebooks/.env
+notebooks/data/
+*.parquet
+
+# dbt
+target/
+dbt_packages/
+logs/
+
+# Local data (symlink to a download)
+road_construction_autonomy/data.csv
